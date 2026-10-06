@@ -1,0 +1,320 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <math.h>
+
+#define MAX 100
+
+/* Stack for numbers */
+double numberStack[MAX];
+int numberTop = -1;
+
+/* Stack for operators */
+char operatorStack[MAX];
+int operatorTop = -1;
+
+
+/* Push number into number stack */
+void pushNumber(double value)
+{
+    if (numberTop == MAX - 1)
+    {
+        printf("Error: Number stack overflow!\n");
+        exit(1);
+    }
+
+    numberStack[++numberTop] = value;
+}
+
+
+/* Pop number from number stack */
+double popNumber()
+{
+    if (numberTop == -1)
+    {
+        printf("Error: Invalid expression!\n");
+        exit(1);
+    }
+
+    return numberStack[numberTop--];
+}
+
+
+/* Push operator into operator stack */
+void pushOperator(char op)
+{
+    if (operatorTop == MAX - 1)
+    {
+        printf("Error: Operator stack overflow!\n");
+        exit(1);
+    }
+
+    operatorStack[++operatorTop] = op;
+}
+
+
+/* Pop operator */
+char popOperator()
+{
+    if (operatorTop == -1)
+    {
+        return '\0';
+    }
+
+    return operatorStack[operatorTop--];
+}
+
+
+/* Get top operator */
+char peekOperator()
+{
+    if (operatorTop == -1)
+    {
+        return '\0';
+    }
+
+    return operatorStack[operatorTop];
+}
+
+
+/* Check operator */
+int isOperator(char ch)
+{
+    return ch == '+' ||
+           ch == '-' ||
+           ch == '*' ||
+           ch == '/' ||
+           ch == '%';
+}
+
+
+/* Return operator precedence */
+int precedence(char op)
+{
+    if (op == '+' || op == '-')
+        return 1;
+
+    if (op == '*' || op == '/' || op == '%')
+        return 2;
+
+    return 0;
+}
+
+
+/* Perform calculation */
+double calculate(double a, double b, char op)
+{
+    switch (op)
+    {
+        case '+':
+            return a + b;
+
+        case '-':
+            return a - b;
+
+        case '*':
+            return a * b;
+
+        case '/':
+            if (b == 0)
+            {
+                printf("Error: Division by zero is not allowed!\n");
+                exit(1);
+            }
+
+            return a / b;
+
+        case '%':
+            if (b == 0)
+            {
+                printf("Error: Modulus by zero is not allowed!\n");
+                exit(1);
+            }
+
+            return fmod(a, b);
+
+        default:
+            printf("Error: Invalid operator!\n");
+            exit(1);
+    }
+}
+
+
+/* Perform one operation */
+void performOperation()
+{
+    double b = popNumber();
+    double a = popNumber();
+
+    char op = popOperator();
+
+    double result = calculate(a, b, op);
+
+    pushNumber(result);
+}
+
+
+/* Evaluate expression */
+double evaluateExpression(char expression[])
+{
+    int i = 0;
+
+    numberTop = -1;
+    operatorTop = -1;
+
+    while (expression[i] != '\0')
+    {
+        /* Ignore spaces */
+        if (isspace(expression[i]))
+        {
+            i++;
+            continue;
+        }
+
+        /* Handle number */
+        if (isdigit(expression[i]) || expression[i] == '.')
+        {
+            char number[50];
+            int j = 0;
+
+            while (isdigit(expression[i]) || expression[i] == '.')
+            {
+                number[j++] = expression[i++];
+            }
+
+            number[j] = '\0';
+
+            pushNumber(atof(number));
+
+            continue;
+        }
+
+        /* Handle opening parenthesis */
+        if (expression[i] == '(')
+        {
+            pushOperator(expression[i]);
+            i++;
+            continue;
+        }
+
+        /* Handle closing parenthesis */
+        if (expression[i] == ')')
+        {
+            while (peekOperator() != '(')
+            {
+                if (operatorTop == -1)
+                {
+                    printf("Error: Invalid parentheses!\n");
+                    exit(1);
+                }
+
+                performOperation();
+            }
+
+            popOperator();
+
+            i++;
+            continue;
+        }
+
+        /* Handle operators */
+        if (isOperator(expression[i]))
+        {
+            char currentOperator = expression[i];
+
+            while (operatorTop != -1 &&
+                   peekOperator() != '(' &&
+                   precedence(peekOperator()) >= precedence(currentOperator))
+            {
+                performOperation();
+            }
+
+            pushOperator(currentOperator);
+
+            i++;
+            continue;
+        }
+
+        /* Invalid character */
+        printf("Error: Invalid character '%c'\n", expression[i]);
+        exit(1);
+    }
+
+    /* Perform remaining operations */
+    while (operatorTop != -1)
+    {
+        if (peekOperator() == '(')
+        {
+            printf("Error: Invalid parentheses!\n");
+            exit(1);
+        }
+
+        performOperation();
+    }
+
+    if (numberTop != 0)
+    {
+        printf("Error: Invalid expression!\n");
+        exit(1);
+    }
+
+    return popNumber();
+}
+
+
+/* Display menu */
+void displayMenu()
+{
+    printf("\n====================================\n");
+    printf("       EXPRESSION CALCULATOR\n");
+    printf("====================================\n");
+    printf("1. Calculate Expression\n");
+    printf("2. Exit\n");
+    printf("====================================\n");
+}
+
+
+/* Main function */
+int main()
+{
+    int choice;
+    char expression[MAX];
+
+    while (1)
+    {
+        displayMenu();
+
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        getchar();
+
+        switch (choice)
+        {
+            case 1:
+
+                printf("\nEnter mathematical expression:\n");
+                fgets(expression, MAX, stdin);
+
+                {
+                    double result = evaluateExpression(expression);
+
+                    printf("\nExpression: %s", expression);
+                    printf("Result = %.2lf\n", result);
+                }
+
+                break;
+
+            case 2:
+
+                printf("\nThank you for using Expression Calculator!\n");
+                return 0;
+
+            default:
+
+                printf("\nInvalid choice! Please try again.\n");
+        }
+    }
+
+    return 0;
+}
